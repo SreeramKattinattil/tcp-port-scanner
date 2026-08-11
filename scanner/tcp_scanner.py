@@ -4,6 +4,7 @@ from queue import Queue
 
 from scanner.worker import scan_port
 from scanner.report import save_json_report
+from scanner.utils import info, success, warning
 
 
 class TCPScanner:
@@ -31,9 +32,13 @@ class TCPScanner:
                 self.queue.task_done()
                 break
 
-            result = scan_port(self.target, port)
+            result = scan_port(
+                self.target,
+                port
+            )
 
             if result:
+
                 with self.lock:
                     self.results.append(result)
 
@@ -41,9 +46,12 @@ class TCPScanner:
 
     def scan(self):
 
-        print(f"\n[*] Target: {self.target}")
-        print(f"[*] Ports: {len(self.ports)}")
-        print(f"[*] Threads: {self.thread_count}")
+        print()
+
+        info(f"Target: {self.target}")
+        info(f"Ports: {len(self.ports)}")
+        info(f"Threads: {self.thread_count}")
+
         print()
 
         start_time = time.perf_counter()
@@ -65,14 +73,13 @@ class TCPScanner:
 
         self.queue.join()
 
-        # Stop workers
+        # Tell workers to stop.
         for _ in threads:
             self.queue.put(None)
 
         for thread in threads:
             thread.join()
 
-        # Sort results
         self.results.sort(
             key=lambda result: result["port"]
         )
@@ -83,7 +90,6 @@ class TCPScanner:
 
         self.display_results(scan_time)
 
-        # Save JSON report
         report_path = save_json_report(
             self.target,
             len(self.ports),
@@ -91,21 +97,30 @@ class TCPScanner:
             scan_time
         )
 
-        print(f"\n[*] Report saved: {report_path}")
+        success(
+            f"Report saved: {report_path}"
+        )
 
     def display_results(self, scan_time):
 
-        print("PORT\t\tSTATE\tSERVICE")
-        print("-" * 45)
+        print(
+            "PORT".ljust(12)
+            + "STATE".ljust(12)
+            + "SERVICE"
+        )
+
+        print("-" * 40)
 
         if self.results:
 
             for result in self.results:
 
+                port = f"{result['port']}/tcp"
+
                 print(
-                    f"{result['port']}/tcp\t"
-                    f"{result['state'].upper()}\t"
-                    f"{result['service']}"
+                    port.ljust(12)
+                    + result["state"].upper().ljust(12)
+                    + result["service"]
                 )
 
                 if result["banner"]:
@@ -113,11 +128,13 @@ class TCPScanner:
                     banner = result["banner"]
 
                     banner = banner.replace(
-                        "\r", " "
+                        "\r",
+                        " "
                     )
 
                     banner = banner.replace(
-                        "\n", " | "
+                        "\n",
+                        " | "
                     )
 
                     banner = banner[:200]
@@ -128,28 +145,16 @@ class TCPScanner:
 
         else:
 
-            print("No open ports found.")
+            warning("No open ports found.")
 
         print()
-        print("[*] Scan completed.")
+
+        success(
+            f"Open ports: {len(self.results)}"
+        )
+
+        success(
+            f"Scan completed in {scan_time:.2f} seconds"
+        )
+
         print()
-
-        print(
-            f"Target        : {self.target}"
-        )
-
-        print(
-            f"Ports scanned : {len(self.ports)}"
-        )
-
-        print(
-            f"Open ports    : {len(self.results)}"
-        )
-
-        print(
-            f"Threads       : {self.thread_count}"
-        )
-
-        print(
-            f"Time          : {scan_time:.2f} seconds"
-        )

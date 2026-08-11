@@ -3,9 +3,11 @@ import socket
 import sys
 
 from scanner.tcp_scanner import TCPScanner
+from scanner.utils import error
 
 
 def parse_arguments():
+
     parser = argparse.ArgumentParser(
         description="Multithreaded TCP Port Scanner"
     )
@@ -36,18 +38,19 @@ def parse_arguments():
 
 
 def validate_target(target):
-    """
-    Check whether the target can be resolved.
-    """
 
     target = target.strip()
 
     if not target:
-        raise ValueError("Target cannot be empty.")
+        raise ValueError(
+            "Target cannot be empty."
+        )
 
     try:
         socket.gethostbyname(target)
+
     except socket.gaierror:
+
         raise ValueError(
             f"Unable to resolve target: {target}"
         )
@@ -56,26 +59,24 @@ def validate_target(target):
 
 
 def parse_ports(port_string):
-    """
-    Convert port input into a sorted list of ports.
-
-    Examples:
-        22,80,443
-        1-100
-        22,80,100-200
-    """
 
     ports = set()
 
     if not port_string.strip():
-        raise ValueError("Port specification cannot be empty.")
+
+        raise ValueError(
+            "Port specification cannot be empty."
+        )
 
     for part in port_string.split(","):
 
         part = part.strip()
 
         if not part:
-            raise ValueError("Invalid empty port value.")
+
+            raise ValueError(
+                "Invalid empty port value."
+            )
 
         try:
 
@@ -84,6 +85,7 @@ def parse_ports(port_string):
                 pieces = part.split("-")
 
                 if len(pieces) != 2:
+
                     raise ValueError(
                         f"Invalid port range: {part}"
                     )
@@ -92,18 +94,25 @@ def parse_ports(port_string):
                 end = int(pieces[1])
 
                 if start > end:
+
                     raise ValueError(
                         f"Invalid range: {part}"
                     )
 
-                for port in range(start, end + 1):
+                for port in range(
+                    start,
+                    end + 1
+                ):
                     ports.add(port)
 
             else:
 
-                ports.add(int(part))
+                ports.add(
+                    int(part)
+                )
 
         except ValueError:
+
             raise ValueError(
                 f"Invalid port specification: {part}"
             )
@@ -111,6 +120,7 @@ def parse_ports(port_string):
     for port in ports:
 
         if port < 1 or port > 65535:
+
             raise ValueError(
                 f"Port must be between 1 and 65535: {port}"
             )
@@ -121,11 +131,13 @@ def parse_ports(port_string):
 def validate_threads(thread_count):
 
     if thread_count < 1:
+
         raise ValueError(
             "Thread count must be at least 1."
         )
 
     if thread_count > 1000:
+
         raise ValueError(
             "Thread count cannot exceed 1000."
         )
@@ -139,15 +151,23 @@ def main():
 
     try:
 
-        target = validate_target(args.target)
+        target = validate_target(
+            args.target
+        )
 
-        ports = parse_ports(args.ports)
+        ports = parse_ports(
+            args.ports
+        )
 
-        thread_count = validate_threads(args.threads)
+        thread_count = validate_threads(
+            args.threads
+        )
 
-    except ValueError as error:
+    except ValueError as error_message:
 
-        print(f"[!] Error: {error}")
+        error(
+            str(error_message)
+        )
 
         sys.exit(1)
 
