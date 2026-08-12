@@ -5,6 +5,7 @@ from queue import Queue
 from scanner.worker import scan_port
 from scanner.report import save_json_report
 from scanner.utils import info, success, warning
+from scanner.logger import get_logger
 
 
 class TCPScanner:
@@ -19,6 +20,8 @@ class TCPScanner:
 
         self.lock = threading.Lock()
 
+        self.logger = get_logger()
+
     def fill_queue(self):
         for port in self.ports:
             self.queue.put(port)
@@ -32,17 +35,24 @@ class TCPScanner:
                 self.queue.task_done()
                 break
 
-            result = scan_port(
-                self.target,
-                port
-            )
+            try:
+                result = scan_port(
+                    self.target,
+                    port
+                )
 
-            if result:
+                if result:
 
-                with self.lock:
-                    self.results.append(result)
+                    with self.lock:
+                        self.results.append(result)
 
-            self.queue.task_done()
+            except Exception as error:
+                self.logger.error(
+                    f"Error scanning port {port}: {error}"
+                )
+
+            finally:
+                self.queue.task_done()
 
     def scan(self):
 
@@ -53,6 +63,12 @@ class TCPScanner:
         info(f"Threads: {self.thread_count}")
 
         print()
+
+        self.logger.info(
+            f"Scan started - target={self.target}, "
+            f"ports={len(self.ports)}, "
+            f"threads={self.thread_count}"
+        )
 
         start_time = time.perf_counter()
 
@@ -99,6 +115,13 @@ class TCPScanner:
 
         success(
             f"Report saved: {report_path}"
+        )
+
+        self.logger.info(
+            f"Scan completed - target={self.target}, "
+            f"open_ports={len(self.results)}, "
+            f"duration={scan_time:.2f}s, "
+            f"report={report_path}"
         )
 
     def display_results(self, scan_time):
