@@ -1,8 +1,15 @@
-import unittest
 import socket
+import threading
+import unittest
 
-from main import parse_ports, validate_target, validate_threads
+from main import (
+    parse_ports,
+    validate_target,
+    validate_threads
+)
+
 from scanner.services import get_service_name
+from scanner.tcp_scanner import TCPScanner
 
 
 class TestPortParser(unittest.TestCase):
@@ -130,13 +137,19 @@ class TestServiceDetection(unittest.TestCase):
         )
 
 
-class TestPortConnection(unittest.TestCase):
+class TestTCPScanner(unittest.TestCase):
 
-    def test_localhost_connection(self):
+    def create_test_server(self):
 
         server = socket.socket(
             socket.AF_INET,
             socket.SOCK_STREAM
+        )
+
+        server.setsockopt(
+            socket.SOL_SOCKET,
+            socket.SO_REUSEADDR,
+            1
         )
 
         server.bind(
@@ -147,23 +160,45 @@ class TestPortConnection(unittest.TestCase):
 
         port = server.getsockname()[1]
 
-        client = socket.socket(
-            socket.AF_INET,
-            socket.SOCK_STREAM
+        return server, port
+
+    def test_scanner_detects_open_port(self):
+
+        server, port = self.create_test_server()
+
+        def server_worker():
+            try:
+                connection, _ = server.accept()
+                connection.close()
+
+            except OSError:
+                pass
+
+        thread = threading.Thread(
+            target=server_worker,
+            daemon=True
         )
 
-        client.settimeout(1)
+        thread.start()
 
-        result = client.connect_ex(
-            ("127.0.0.1", port)
+        scanner = TCPScanner(
+            target="127.0.0.1",
+            ports=[port],
+            thread_count=5
         )
 
-        client.close()
+        scanner.scan()
+
+        open_ports = [
+            result["port"]
+            for result in scanner.results
+        ]
+
         server.close()
 
-        self.assertEqual(
-            result,
-            0
+        self.assertIn(
+            port,
+            open_ports
         )
 
 
