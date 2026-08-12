@@ -1,36 +1,51 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def save_json_report(target, ports_scanned, results, scan_time):
     """
-    Save scan results to a JSON file.
+    Save scan results to a JSON report using a UTC timestamp.
     """
 
-    # Create reports directory if it doesn't exist
     os.makedirs("reports", exist_ok=True)
 
-    # Create a timestamp for the filename
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    now = datetime.now(timezone.utc)
 
-    # Replace characters that are not suitable for filenames
-    safe_target = target.replace("/", "_").replace(":", "_")
+    timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+
+    safe_target = (
+        target
+        .replace("/", "_")
+        .replace(":", "_")
+    )
 
     filename = f"scan_{safe_target}_{timestamp}.json"
 
-    filepath = os.path.join("reports", filename)
+    filepath = os.path.join(
+        "reports",
+        filename
+    )
 
     report = {
         "target": target,
-        "scan_time": datetime.now().isoformat(),
+        "scan_time_utc": now.isoformat(),
         "ports_scanned": ports_scanned,
         "open_ports": len(results),
         "duration_seconds": round(scan_time, 2),
         "results": results
     }
 
-    with open(filepath, "w", encoding="utf-8") as file:
-        json.dump(report, file, indent=4)
+    with open(
+        filepath,
+        "w",
+        encoding="utf-8"
+    ) as file:
+
+        json.dump(
+            report,
+            file,
+            indent=4
+        )
 
     return filepath
