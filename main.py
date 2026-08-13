@@ -34,6 +34,12 @@ def parse_arguments():
         help="Number of worker threads (default: 100)"
     )
 
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Save scan results as a JSON report"
+    )
+
     return parser.parse_args()
 
 
@@ -99,17 +105,12 @@ def parse_ports(port_string):
                         f"Invalid range: {part}"
                     )
 
-                for port in range(
-                    start,
-                    end + 1
-                ):
+                for port in range(start, end + 1):
                     ports.add(port)
 
             else:
 
-                ports.add(
-                    int(part)
-                )
+                ports.add(int(part))
 
         except ValueError:
 
@@ -177,7 +178,9 @@ def main():
         thread_count=thread_count
     )
 
-    scanner.scan()
+    scanner.scan(
+        save_json=args.json
+    )
 
 
 if __name__ == "__main__":

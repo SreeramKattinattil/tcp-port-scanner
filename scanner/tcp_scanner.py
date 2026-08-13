@@ -42,7 +42,6 @@ class TCPScanner:
                 )
 
                 if result:
-
                     with self.lock:
                         self.results.append(result)
 
@@ -54,7 +53,7 @@ class TCPScanner:
             finally:
                 self.queue.task_done()
 
-    def scan(self):
+    def scan(self, save_json=False):
 
         print()
 
@@ -67,7 +66,8 @@ class TCPScanner:
         self.logger.info(
             f"Scan started - target={self.target}, "
             f"ports={len(self.ports)}, "
-            f"threads={self.thread_count}"
+            f"threads={self.thread_count}, "
+            f"json={save_json}"
         )
 
         start_time = time.perf_counter()
@@ -106,22 +106,25 @@ class TCPScanner:
 
         self.display_results(scan_time)
 
-        report_path = save_json_report(
-            self.target,
-            len(self.ports),
-            self.results,
-            scan_time
-        )
+        # Save JSON report only when --json is provided.
+        if save_json:
 
-        success(
-            f"Report saved: {report_path}"
-        )
+            report_path = save_json_report(
+                self.target,
+                len(self.ports),
+                self.results,
+                scan_time
+            )
+
+            success(
+                f"Report saved: {report_path}"
+            )
 
         self.logger.info(
             f"Scan completed - target={self.target}, "
             f"open_ports={len(self.results)}, "
             f"duration={scan_time:.2f}s, "
-            f"report={report_path}"
+            f"json={save_json}"
         )
 
     def display_results(self, scan_time):
